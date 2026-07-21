@@ -1,7 +1,7 @@
 use winit::{
     application::ApplicationHandler, event::*,
     event_loop::{ActiveEventLoop, EventLoop},
-    keyboard::{KeyCode, PhysicalKey},
+    keyboard::{PhysicalKey},
     window::Window
 };
 use std::sync::Arc;
@@ -102,7 +102,14 @@ impl ApplicationHandler<State> for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             WindowEvent::RedrawRequested => {
-                state.render();
+                state.update();
+                match state.render() {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::error!("{e}");
+                        event_loop.exit()
+                    }
+                }
             },
             WindowEvent::KeyboardInput {
                 event:
@@ -113,10 +120,7 @@ impl ApplicationHandler<State> for App {
                         ..
                     },
                 ..
-            } => match (code, key_state.is_pressed()) {
-                (KeyCode::Escape, true) => event_loop.exit(),
-                _ => {}
-            },
+            } => state.handle_key(event_loop, code, key_state.is_pressed()),
             _ => {}
         }
     }

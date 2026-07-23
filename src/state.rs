@@ -22,6 +22,7 @@ pub struct State {
     config: wgpu::SurfaceConfiguration,
     is_surface_configured: bool,
     window: Arc<Window>,
+    render_pipeline: wgpu::RenderPipeline,
 }
 
 impl State {
@@ -114,13 +115,94 @@ impl State {
             desired_maximum_frame_latency: 2,
         };
 
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+        });
+
+        let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Render Pipeline Layout"),
+            bind_group_layouts: &[],
+            immediate_size: 0,
+        });
+
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                // Здесь мы можем указать какая функци шейдера будет указана
+                entry_point: Some("vs_main"),
+                // Здесь тип вершин, но мы указали их в вершинном шейдере
+                buffers: &[], //2
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            },
+            // Технически этот фрагмент необязателен,
+            // но нам нужные данные о цвете в surface
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                // В этом поле указывается wgpu какие цветовые выходы настроить
+                // указываем, что смешивание заменчет старые данные новыми
+                // Указываем записывать во все цвета
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+            }),
+
+            // Здесь описывается, как интерпретировать наши вершине
+            // при преобразовании из в треугольники
+            primitive: wgpu::PrimitiveState {
+                // Использование этого метода означает,
+                // что каждые три вершины будут соответствовать треугольнику
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                // Поля front_faceand и or cull_modeопределяют wgpu, 
+                // направлен ли данный треугольник вперед или нет.
+                // and FrontFace::Ccwозначает, что треугольник направлен вперед, 
+                // если его вершины расположены против часовой стрелки. 
+                // Треугольники, которые не считаются направленными вперед, 
+                // отсеиваются (не включаются в рендеринг) в соответствии с параметром CullMode::Back.
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                // Установка значения, отличного от Fill, 
+                // требует наличия Features::NON_FILL_POLYGON_MODE
+                polygon_mode: wgpu::PolygonMode::Fill,
+                // Requires Features::DEPTH_CLIP_CONTROL
+                unclipped_depth: false,
+                // Requires Features::CONSERVATIVE_RASTERIZATION
+                conservative: false,
+            },
+
+            // буфер глубины/трафарета
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                // count  определяет сколько выборо будет использовать конвейер обработки данных
+                count: 1,
+                // mask указывает какие образцы были активны
+                // в данном случае мы используем все из них
+                mask: !0,
+                // Связанно с сглаживанием
+                alpha_to_coverage_enabled: false,
+            },
+            // указывает, сколько слоев массива могут содержать прикрепленные элементы рендеринга
+            multiview_mask: None,
+            // Позволяет wgpu кэшировать данные компиляции шейдеров. 
+            // Полезно только для целевых платформ сборки Android.
+            cache: None,
+        });
+
         Ok(Self {
             surface,
             device,
             queue,
             config,
             is_surface_configured: false,
-            window
+            render_pipeline,
+            window,
         })
     }
 
@@ -196,7 +278,7 @@ impl State {
         // Блок указывает rust, что можно удалить все переменные внутри него,
         // когда блока покинет эту область видимости
         {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                     view: &view,
@@ -217,6 +299,10 @@ impl State {
                 timestamp_writes: None,
                 multiview_mask: None,
             });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            // просим нарисовать что-то с тремя вершинами и одним экземляром
+            render_pass. draw(0..3, 0..1);
         }
 
         // Эти строки указывают wgpu на необходимость завершения буфера команд

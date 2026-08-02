@@ -7,8 +7,11 @@ use winit::{
 use std::sync::Arc;
 
 pub mod state;
+pub mod vertex;
 
 use crate::state::State;
+
+
 
 #[derive(Default)]
 struct App {

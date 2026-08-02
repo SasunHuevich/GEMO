@@ -11,6 +11,9 @@ pollster = "0.3"
 log = "0.4"
 anyhow = "1.0"
 
+# This crate gives small utilities for casting between plain data types.
+bytemuck = { version = "1.25", features = [ "derive" ]}
+
 [lib]
 # rlib - для запуска в настольной среде
 # cdylib - для web assembly

@@ -1,24 +1,28 @@
 // Vertex shader
 
+struct VertexInput {
+    @location(0) position: vec3<f32>,
+    @location(1) color: vec3<f32>,
+};
+
 // Структура для хранения выходных данных вершинного шейдера
 struct VertexOutput {
     // Координаты вершины
     // bit builtin(position) сообщает wgpu, что это значение,
     // которое мы хотим использовать в качестве вершины отсечения
+    // Тут 4 вершина, это масштабный множитель
     @builtin(position) clip_position: vec4<f32>,
-}
+    @location(0) color: vec3<f32>,
+};
 
 // Точка входа вершинного шейдера
 @vertex
 fn vs_main(
-    @builtin(vertex_index) in_vertex_index: u32,
-    @builtin(instance_index) in_instance_index: u32,
+    model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-    let x = f32(1 - i32(in_vertex_index)) * 0.5;
-    let y = f32(i32(in_vertex_index & 1u) * 2 - 1) * 0.5;
-    let offset_x = f32(in_instance_index) * 0.2;
-    out.clip_position = vec4<f32>(x + offset_x, y, 0.0, 1.0);
+    out.color = model.color;
+    out.clip_position = vec4<f32>(model.position, 1.0);
     return out;
 }
 
@@ -28,5 +32,5 @@ fn vs_main(
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Это устанавливает цвет фрагмента на коричневый
-    return vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    return vec4<f32>(in.color, 1.0);
 }

@@ -20,9 +20,17 @@ use winit::platform::web::EventLoopExtWebSys;
 
 // Вершины располоагаем против часовой стрелки, поскольку front_face: wgpu::FrontFace::Ccw,
 const VERTICES: &[Vertex] = &[
-    Vertex {position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0]},
-    Vertex {position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0]},
-    Vertex {position: [0.5, -0.5, 0.0], color: [0.0, 0.0, 1.0]},
+    Vertex { position: [-0.0868241, 0.49240386, 0.0], color: [-0.5, 0.0, 0.5] }, // A
+    Vertex { position: [-0.49513406, 0.06958647, 0.0], color: [0.5, 1.0, 1.0] }, // B
+    Vertex { position: [-0.21918549, -0.44939706, 0.0], color: [1.0, 0.0, 0.5] }, // C
+    Vertex { position: [0.35966998, -0.3473291, 0.0], color: [0.8, 0.3, -0.2] }, // D
+    Vertex { position: [0.44147372, 0.2347359, 0.0], color: [0.5, 0.0, 0.5] }, // E
+];
+
+const INDICES: &[u16] = &[
+    0, 1, 4,
+    1, 2, 4,
+    2, 3, 4,
 ];
 
 pub struct State {
@@ -36,7 +44,8 @@ pub struct State {
     window: Arc<Window>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
-    num_vertices: u32,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
 }
 
 impl State {
@@ -219,7 +228,15 @@ impl State {
             }
         );
 
-        let num_vertices = VERTICES.len() as u32;
+        let index_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Index Buffer"),
+                contents: bytemuck::cast_slice(INDICES),
+                usage: wgpu::BufferUsages::INDEX,
+            }
+        );
+
+        let num_indices = INDICES.len() as u32;
 
 
         Ok(Self {
@@ -231,7 +248,8 @@ impl State {
             window,
             render_pipeline,
             vertex_buffer,
-            num_vertices,
+            index_buffer,
+            num_indices,
         })
     }
 
@@ -333,8 +351,11 @@ impl State {
             // Первый параметр - номер буферного слота, который используем для этого вершинного буфера
             // второй параметр - Используемый фрагмент буфера. Мы используем весь буфер.
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            // просим нарисовать что-то с тремя вершинами и одним экземляром
-            render_pass. draw(0..self.num_vertices, 0..1);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            // При использовании буфера индексов необходимо использовать draw_indexed. drawМетод игнорирует буфер индексов. 
+            // Также убедитесь, что вы используете количество индексов ( num_indices), а не вершин, иначе ваша модель либо будет отображаться неправильно, 
+            // либо метод выдаст ошибку panicиз-за недостатка индексов.
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1)
         }
 
         // Эти строки указывают wgpu на необходимость завершения буфера команд

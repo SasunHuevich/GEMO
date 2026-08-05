@@ -7,6 +7,7 @@ use winit::{
 use winit::keyboard::{KeyCode};
 
 use crate::vertex::Vertex;
+use crate::polygon::Polygon;
 
 // Атрибуты условной компиляции 
 // configuration
@@ -15,23 +16,6 @@ use crate::vertex::Vertex;
 use wasm_bindgen::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use winit::platform::web::EventLoopExtWebSys;
-
-
-
-// Вершины располоагаем против часовой стрелки, поскольку front_face: wgpu::FrontFace::Ccw,
-const VERTICES: &[Vertex] = &[
-    Vertex { position: [-0.0868241, 0.49240386, 0.0], color: [-0.5, 0.0, 0.5] }, // A
-    Vertex { position: [-0.49513406, 0.06958647, 0.0], color: [0.5, 1.0, 1.0] }, // B
-    Vertex { position: [-0.21918549, -0.44939706, 0.0], color: [1.0, 0.0, 0.5] }, // C
-    Vertex { position: [0.35966998, -0.3473291, 0.0], color: [0.8, 0.3, -0.2] }, // D
-    Vertex { position: [0.44147372, 0.2347359, 0.0], color: [0.5, 0.0, 0.5] }, // E
-];
-
-const INDICES: &[u16] = &[
-    0, 1, 4,
-    1, 2, 4,
-    2, 3, 4,
-];
 
 pub struct State {
     // 'static - этот тип являяется независимым владельцем своей памяти
@@ -49,7 +33,7 @@ pub struct State {
 }
 
 impl State {
-    pub async fn new(window: Arc<Window>) -> anyhow::Result<Self> {
+    pub async fn new(window: Arc<Window>, polygons: Vec<Polygon>) -> anyhow::Result<Self> {
         let size = window.inner_size();
 
         // instance - первое, что мы создаём при использовании wgpu
@@ -191,7 +175,8 @@ impl State {
                 // если его вершины расположены против часовой стрелки. 
                 // Треугольники, которые не считаются направленными вперед, 
                 // отсеиваются (не включаются в рендеринг) в соответствии с параметром CullMode::Back.
-                front_face: wgpu::FrontFace::Ccw,
+                // Сделал по часовой стрелке Cw
+                front_face: wgpu::FrontFace::Cw,
                 cull_mode: Some(wgpu::Face::Back),
                 // Установка значения, отличного от Fill, 
                 // требует наличия Features::NON_FILL_POLYGON_MODE
@@ -220,10 +205,23 @@ impl State {
             cache: None,
         });
 
+        let mut vertices: Vec<Vertex> = Vec::new();
+        let mut indices: Vec<u16> = Vec::new();
+
+        for polygon in polygons.into_iter() {
+            for vertex in polygon.get_vertices().into_iter() {
+                vertices.push(vertex);
+            }
+
+            for index in polygon.get_indices().into_iter() {
+                indices.push(index);
+            }
+        }
+
         let vertex_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
+                contents: bytemuck::cast_slice(&vertices),
                 usage: wgpu::BufferUsages::VERTEX,
             }
         );
@@ -231,12 +229,12 @@ impl State {
         let index_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(INDICES),
+                contents: bytemuck::cast_slice(&indices),
                 usage: wgpu::BufferUsages::INDEX,
             }
         );
 
-        let num_indices = INDICES.len() as u32;
+        let num_indices = indices.len() as u32;
 
 
         Ok(Self {

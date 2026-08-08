@@ -1,3 +1,5 @@
+use crate::geometry::Vertex as GeometryVertex;
+
 #[repr(C)] // (representation c) этот атрибут указывает компилятору организовать структуру данных точно так же, как это сделал бы язык Си
 // Это критически важно при работе с видиокартами через wgpu. Раст для оптимизации переставляет поля в структуре местами.
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -31,6 +33,15 @@ impl Vertex {
                     format: wgpu::VertexFormat::Float32x3,
                 }
             ]
+        }
+    }
+}
+
+impl From<&GeometryVertex> for Vertex {
+    fn from(vertex: &GeometryVertex) -> Self {
+        Self {
+            position: [vertex.x, vertex.y, 0.0],
+            color: [1.0, 1.0, 1.0],
         }
     }
 }

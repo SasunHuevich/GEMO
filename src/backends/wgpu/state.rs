@@ -6,8 +6,8 @@ use winit::{
 };
 use winit::keyboard::{KeyCode};
 
-use crate::vertex::Vertex;
-use crate::polygon::Polygon;
+use super::vertex::Vertex;
+use crate::geometry::Polygon;
 
 // Атрибуты условной компиляции 
 // configuration
@@ -210,7 +210,7 @@ impl State {
 
         for polygon in polygons.into_iter() {
             for vertex in polygon.get_vertices().into_iter() {
-                vertices.push(vertex);
+                vertices.push(Vertex::from(&vertex));
             }
 
             for index in polygon.get_indices().into_iter() {

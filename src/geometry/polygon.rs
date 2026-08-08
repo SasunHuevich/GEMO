@@ -1,4 +1,4 @@
-use crate::vertex::Vertex;
+use super::Vertex;
 
 #[derive(Clone)]
 pub struct Polygon {

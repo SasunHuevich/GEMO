@@ -6,8 +6,8 @@ use winit::{
 };
 use std::sync::Arc;
 
-use crate::state::State;
-use crate::polygon::Polygon;
+use super::state::State;
+use crate::geometry::Polygon;
 
 #[derive(Default)]
 pub struct App {
